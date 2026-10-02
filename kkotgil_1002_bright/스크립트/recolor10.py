@@ -21,6 +21,7 @@ def run(src,seed,GAM=1.1,PN=85,LG=1.0,out=None):
     for b in np.unique(vb[flower]):
         m=vb==b; t=pick(rng,HYD if hydv[m].mean()>=0.5 else ROSE)+rng.normal(0,1.5,3)
         L=np.clip(Lin[m]/np.percentile(Lin[m],PN),0,1)
+        if hydv[m].mean()>=0.5: L=L**0.55       # 흰 잔꽃(수국 자리)은 그늘을 덜 — 회색으로 안 보이게
         # 그늘이 회색으로 죽지 않게: 어두울수록 같은 색 계열로 진해짐(선형 공간에서 채널별 거듭제곱)
         tl=s2l(np.clip(t,0,255))[None]; Lg=L[:,None]**GAM
         cl=np.power(tl,1+SAT*(1-L[:,None]))*np.power(Lg,1.6)
