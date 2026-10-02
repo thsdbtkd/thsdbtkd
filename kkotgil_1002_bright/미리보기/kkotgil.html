@@ -1,0 +1,124 @@
+<title>꽃길 꽃잎 미리보기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* 레이아웃: 화면 전체가 3D 무대, 위에 얇은 조작 띠 하나 */
+:root{
+  --bg:#f6efe9; --fg:#3a2a2c; --muted:#86706f; --chip:#fffaf6; --line:#e6d6cf; --accent:#d9677f;
+  --display:"Gowun Batang",Georgia,serif; --body:"IBM Plex Sans KR",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1819;--fg:#f3e7e3;--muted:#b49c99;--chip:#2a2223;--line:#3d3133;--accent:#f08ea3;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1e1819;--fg:#f3e7e3;--muted:#b49c99;--chip:#2a2223;--line:#3d3133;--accent:#f08ea3;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;overflow:hidden}
+.bar{position:fixed;left:0;right:0;top:0;z-index:2;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  background:color-mix(in srgb,var(--bg) 86%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+h1{font-family:var(--display);font-size:1.15rem;margin:0;letter-spacing:.01em}
+.grp{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lab{font-size:.72rem;color:var(--muted);letter-spacing:.06em}
+button{font:600 .82rem var(--body);color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#stage{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none}
+.note{position:fixed;left:16px;right:16px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2;font-size:.75rem;color:var(--muted);text-align:left;pointer-events:none}
+#msg[hidden]{display:none}
+#msg{position:fixed;inset:0;display:grid;place-items:center;z-index:1;font-size:.9rem;color:var(--muted);pointer-events:none}
+</style>
+
+<canvas id="stage" aria-label="꽃 모델 3D 미리보기"></canvas>
+<div class="bar">
+  <h1>꽃길 11판</h1>
+  <div class="grp" role="group" aria-label="모델">
+    <span class="lab">모델</span>
+    <button id="m-bank" data-m="bank" aria-pressed="true">꽃둑</button>
+    <button id="m-mound" data-m="mound" aria-pressed="false">꽃무더기</button>
+    <button id="m-a" data-m="sampleA" aria-pressed="false">샘플 A</button>
+  </div>
+  <div class="grp">
+    <span class="lab">꽃잎</span>
+    <button id="petal" aria-pressed="true">날리기 켜짐</button>
+    <span class="lab">배경</span>
+    <button id="bgbtn" aria-pressed="false">현장 햇살</button>
+  </div>
+</div>
+<div id="msg">모델 불러오는 중…</div>
+<p class="note">끌어서 돌리기 · 두 손가락이나 휠로 확대 · three.js 0.185, 주변광 1.4 + 방향광 1.2, 톤매핑 없음</p>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const canvas=document.getElementById('stage'), msg=document.getElementById('msg');
+const r=new THREE.WebGLRenderer({canvas,antialias:true});
+r.setPixelRatio(Math.min(devicePixelRatio,2)); r.toneMapping=THREE.NoToneMapping; r.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+scene.add(new THREE.AmbientLight(0xffffff,1.4));
+const dl=new THREE.DirectionalLight(0xffffff,1.2); dl.position.set(3,5,4); scene.add(dl);
+const cam=new THREE.PerspectiveCamera(35,1,0.001,100);
+const ctl=new OrbitControls(cam,canvas); ctl.enableDamping=true;
+
+// 배경: 회색(합성용 154,163,159) / 현장 햇살(따뜻한 그러데이션)
+const GRAY=new THREE.Color().setRGB(154/255,163/255,159/255,THREE.SRGBColorSpace);
+function sunTex(){const c=document.createElement('canvas');c.width=4;c.height=256;const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,256);gr.addColorStop(0,'#fdf3e4');gr.addColorStop(.55,'#f6dccb');gr.addColorStop(1,'#e9c9b4');g.fillStyle=gr;g.fillRect(0,0,4,256);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+const SUN=sunTex(); scene.background=GRAY;
+
+// 날리는 꽃잎: 휜 꽃잎 하나를 여러 장 그리기
+const N=150, pal=['#fad6ce','#f6beba','#f0a0b0','#feece2','#f3b6a6'];
+const pg=new THREE.PlaneGeometry(1,0.7,4,2); const pp=pg.attributes.position;
+for(let i=0;i<pp.count;i++){const x=pp.getX(i),y=pp.getY(i);pp.setZ(i,0.18*(x*x)+0.08*y*y);pp.setY(i,y*(1-0.35*Math.abs(x)))}
+pg.computeVertexNormals();
+const pm=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+const petals=new THREE.InstancedMesh(pg,pm,N); scene.add(petals);
+const st=[]; const tmp=new THREE.Object3D(), col=new THREE.Color();
+for(let i=0;i<N;i++){col.set(pal[i%pal.length]);petals.setColorAt(i,col);st.push({})}
+let box=null, size=1;
+function seed(p,top){const b=box;p.x=THREE.MathUtils.lerp(b.min.x-size*.15,b.max.x+size*.15,Math.random());
+  p.z=THREE.MathUtils.lerp(b.min.z-size*.3,b.max.z+size*.3,Math.random());
+  p.y=top?b.max.y+size*THREE.MathUtils.lerp(.1,.7,Math.random()):THREE.MathUtils.lerp(b.min.y,b.max.y+size*.7,Math.random());
+  p.v=size*THREE.MathUtils.lerp(.05,.11,Math.random()); p.ph=Math.random()*6.28; p.sp=THREE.MathUtils.lerp(.6,1.6,Math.random());
+  p.s=size*THREE.MathUtils.lerp(.012,.022,Math.random()); p.rx=Math.random()*6.28; p.ry=Math.random()*6.28}
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let petalOn=true;
+
+const loader=new GLTFLoader(); const cache={}; let cur=null;
+async function show(name){
+  msg.hidden=false; msg.textContent='모델 불러오는 중…';
+  if(!cache[name]){
+    // 모델은 같은 폴더의 .js 파일에 담겨 있음(glb 를 base64 로 넣음)
+    if(!(window.GLB&&GLB[name])) await new Promise((ok,no)=>{const s=document.createElement('script');s.src=name+'.js';s.onload=ok;s.onerror=()=>no(new Error(name+'.js'));document.head.appendChild(s)});
+    const bin=Uint8Array.from(atob(GLB[name]),c=>c.charCodeAt(0)).buffer;
+    cache[name]=(await loader.parseAsync(bin,'')).scene; delete GLB[name];
+  }
+  if(cur) scene.remove(cur); cur=cache[name]; scene.add(cur);
+  box=new THREE.Box3().setFromObject(cur); const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3()); size=sz.length();
+  // 꽃이 있는 앞면: 꽃둑은 −z 쪽, 나머지는 +z 쪽
+  const front=name==='bank'?-1:1;
+  cam.near=size*.01; cam.far=size*20; cam.updateProjectionMatrix();
+  cam.position.set(c.x+size*.15*front, c.y+size*.35, c.z+front*size*1.6); ctl.target.copy(c); ctl.update();
+  st.forEach(p=>seed(p,false)); msg.hidden=true;
+}
+document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); show(b.dataset.m).catch(e=>msg.textContent='모델을 못 불러왔습니다: '+e.message)}));
+const pb=document.getElementById('petal');
+pb.addEventListener('click',()=>{petalOn=!petalOn;pb.setAttribute('aria-pressed',petalOn);pb.textContent=petalOn?'날리기 켜짐':'날리기 꺼짐';petals.visible=petalOn});
+const bb=document.getElementById('bgbtn');
+bb.addEventListener('click',()=>{const on=bb.getAttribute('aria-pressed')!=='true';bb.setAttribute('aria-pressed',on);scene.background=on?SUN:GRAY});
+
+function resize(){const w=innerWidth,h=innerHeight;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+addEventListener('resize',resize); resize();
+const clock=new THREE.Clock();
+r.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),.05), t=clock.elapsedTime;
+  if(box&&petalOn){
+    for(let i=0;i<N;i++){const p=st[i];
+      if(!reduce){p.y-=p.v*dt; p.x+=Math.sin(t*p.sp+p.ph)*size*.012*dt; p.rx+=dt*p.sp*1.3; p.ry+=dt*p.sp*.8;
+        if(p.y<box.min.y-size*.05) seed(p,true);}
+      tmp.position.set(p.x+Math.sin(t*.7+p.ph)*size*.01,p.y,p.z); tmp.rotation.set(p.rx,p.ry,p.ph); tmp.scale.setScalar(p.s); tmp.updateMatrix(); petals.setMatrixAt(i,tmp.matrix)}
+    petals.instanceMatrix.needsUpdate=true}
+  ctl.update(); r.render(scene,cam)});
+show('bank').catch(e=>msg.textContent='모델을 못 불러왔습니다: '+e.message);
+</script>
