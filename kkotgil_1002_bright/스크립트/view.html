@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#9aa39f}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script></head>
+<body><script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const q=new URLSearchParams(location.search);
+const W=+q.get('w')||1000,H=+q.get('h')||700;
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+r.setSize(W,H); r.toneMapping=THREE.NoToneMapping; r.outputColorSpace=THREE.SRGBColorSpace;
+r.setClearColor(+('0x'+(q.get('bg')||'9aa39f'))); document.body.appendChild(r.domElement);
+const s=new THREE.Scene();
+s.add(new THREE.AmbientLight(0xffffff,1.4));
+const dl=new THREE.DirectionalLight(0xffffff,1.2); dl.position.set(3,5,4); s.add(dl);
+const cam=new THREE.PerspectiveCamera(35,W/H,0.0001,1000);
+new GLTFLoader().load(q.get('f'),g=>{
+  const o=g.scene; s.add(o);
+  const box=new THREE.Box3().setFromObject(o), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+  const rad=sz.length()/2, k=+q.get('d')||1.5;
+  const fit=rad/Math.sin(THREE.MathUtils.degToRad(35/2));
+  const dir=new THREE.Vector3(0,0.35,1).normalize();
+  let tgt=c.clone();
+  if(q.get('close')){ tgt=new THREE.Vector3(c.x+sz.x*(+q.get('cx')||0), box.min.y+sz.y*0.6, c.z); }
+  cam.position.copy(tgt).addScaledVector(dir, (q.get('close')? (+q.get('cd')||0.35):k)*sz.length());
+  cam.near=fit*0.001; cam.far=fit*20; cam.updateProjectionMatrix(); cam.lookAt(tgt);
+  r.render(s,cam); document.title='ready';
+});
+</script></body></html>
