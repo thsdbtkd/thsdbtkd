@@ -25,7 +25,7 @@ def add_prim(g,P,C,T,matname):
     j['meshes'][0]['primitives'].append({'attributes':{'POSITION':ip,'COLOR_0':ic},'indices':ii,'material':len(j['materials'])-1})
     j['buffers'][0]['byteLength']=len(g.bin)
 LEMI=0.15
-def run(dst,AMB=0.62,LEAFMUL=(0.80,0.70,0.62),NF=420,NL=80,seed=5):
+def run(dst,AMB=0.62,LEAFMUL=(0.80,0.70,0.62),NF=520,NL=220,seed=5):
     rng=np.random.default_rng(seed)
     # 장미·수국 빛 굽기: 10판 함수에 팔레트만 바꿔 넣음
     SA.ROSE=ROSE; SA.HYD=HYD; SA.pick=pick; SA.SAT=0.45
