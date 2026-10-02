@@ -10,7 +10,7 @@ r.setSize(W,H); r.toneMapping=THREE.NoToneMapping; r.outputColorSpace=THREE.SRGB
 r.setClearColor(+('0x'+(q.get('bg')||'9aa39f'))); document.body.appendChild(r.domElement);
 const s=new THREE.Scene();
 s.add(new THREE.AmbientLight(0xffffff,1.4));
-const dl=new THREE.DirectionalLight(0xffffff,1.2); dl.position.set(3,5,4); s.add(dl);
+const dl=new THREE.DirectionalLight(0xffffff,1.2); dl.position.set(3,10,2); s.add(dl);
 const cam=new THREE.PerspectiveCamera(35,W/H,0.0001,1000);
 new GLTFLoader().load(q.get('f'),async g=>{
   const o=g.scene; s.add(o);

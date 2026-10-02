@@ -4,7 +4,8 @@ from PIL import Image
 def s2l(c): c=np.asarray(c,float)/255; return np.where(c<=0.04045,c/12.92,((c+0.055)/1.055)**2.4)
 import os
 D=os.environ.get('PEONY_DIR','peony/')
-SHAPES=[{k:np.load(f'{D}peony{i}_{k}.npy') for k in ('v','n','t','uv','ao','dep','light')} for i in range(4)]
+NSH=len([f for f in os.listdir(D) if f.endswith('_light.npy')])
+SHAPES=[{k:np.load(f'{D}peony{i}_{k}.npy') for k in ('v','n','t','uv','ao','dep','light')} for i in range(NSH)]
 LGAM=0.38; FLOOR=0.50
 def colorize(sh,base,deep,rng,light=np.array([-0.5,0.4,0.75]),ao_k=0.35):
     """송이 하나 정점색(선형): 깊이 그러데이션(바깥 base → 안쪽 deep) × AO × 햇살"""
@@ -12,7 +13,7 @@ def colorize(sh,base,deep,rng,light=np.array([-0.5,0.4,0.75]),ao_k=0.35):
     d=np.clip(sh['dep'],0,1)
     col=s2l(base)[None]*(1-d[:,None]**1.1*0.75)+s2l(deep)[None]*(d[:,None]**1.1*0.75)
     lt=sh['light']; lum=lt@[0.2126,0.7152,0.0722]; k=np.percentile(lum,96)
-    lt=np.repeat((lum/k)[:,None],3,1)*np.array([1.04,0.98,0.88])[None]   # 밝기만(색 잡티 제거)+따뜻하게
+    lt=np.repeat((lum/k)[:,None],3,1)*np.array([1.05,0.98,0.86])[None]   # 밝기만(색 잡티 제거)+따뜻하게
     lt=np.clip(lt,0,1.15); lt=lt**LGAM                       # Cycles 로 구운 빛(따뜻한 해+하늘+반투명) 정규화
     return np.clip(col*(FLOOR+(1-FLOOR)*lt)*rng.uniform(0.97,1.03),0,1)
 def place(sh,center,axis,R,spin):
@@ -21,7 +22,7 @@ def place(sh,center,axis,R,spin):
     M=np.stack([t2,b2,a],0)
     return center[None]+(sh['v']*R)@M, sh['n']@M
 def tex_bytes():
-    buf=io.BytesIO(); Image.open(D+'petal.png').save(buf,'PNG',optimize=True); return buf.getvalue()
+    buf=io.BytesIO(); Image.open(D+'petal.png').convert('RGBA').resize((256,384)).save(buf,'PNG',optimize=True); return buf.getvalue()
 import json,struct
 def peony_arrays(items,rng):
     """items: [(shape_i, center, axis, R, spin, base, deep)] → P,N,U,C,T"""
