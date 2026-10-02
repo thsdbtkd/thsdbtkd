@@ -17,9 +17,10 @@ new GLTFLoader().load(q.get('f'),g=>{
   const box=new THREE.Box3().setFromObject(o), c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
   const rad=sz.length()/2, k=+q.get('d')||1.5;
   const fit=rad/Math.sin(THREE.MathUtils.degToRad(35/2));
-  const dir=new THREE.Vector3(0,0.35,1).normalize();
+  let dir=new THREE.Vector3(0,0.35,1).normalize();
+  if(q.get('el')){const el=THREE.MathUtils.degToRad(+q.get('el')),az=THREE.MathUtils.degToRad(+(q.get('az')||0)); dir=new THREE.Vector3(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el));}
   let tgt=c.clone();
-  if(q.get('close')){ tgt=new THREE.Vector3(c.x+sz.x*(+q.get('cx')||0), box.min.y+sz.y*0.6, c.z); }
+  if(q.get('close')){ tgt=new THREE.Vector3(c.x+sz.x*(+q.get('cx')||0), box.min.y+sz.y*(q.get('cy')?+q.get('cy'):0.6), c.z+sz.z*(+q.get('cz')||0)); }
   cam.position.copy(tgt).addScaledVector(dir, (q.get('close')? (+q.get('cd')||0.35):k)*sz.length());
   cam.near=fit*0.001; cam.far=fit*20; cam.updateProjectionMatrix(); cam.lookAt(tgt);
   r.render(s,cam); document.title='ready';
