@@ -22,6 +22,13 @@ new GLTFLoader().load(q.get('f'),g=>{
   let tgt=c.clone();
   if(q.get('close')){ tgt=new THREE.Vector3(c.x+sz.x*(+q.get('cx')||0), box.min.y+sz.y*(q.get('cy')?+q.get('cy'):0.6), c.z+sz.z*(+q.get('cz')||0)); }
   cam.position.copy(tgt).addScaledVector(dir, (q.get('close')? (+q.get('cd')||0.35):k)*sz.length());
+  if(q.get('eye')){ // 사람 눈높이: unit=1m 의 월드 길이, eyeh(m), dist(m, 앞면 중심에서), pitch(아래로 도), az(도)
+    const u=+q.get('unit')||1, az=THREE.MathUtils.degToRad(+(q.get('az')||0)), pt=THREE.MathUtils.degToRad(+(q.get('pitch')||12));
+    const fz=(az===0)?box.max.z:c.z; const base=new THREE.Vector3(c.x, box.min.y, c.z);
+    const back=new THREE.Vector3(Math.sin(az),0,Math.cos(az));
+    cam.position.copy(base).addScaledVector(back,(+q.get('dist')||3)*u+ (az===0?sz.z/2:sz.z/2)); cam.position.y=box.min.y+(+q.get('eyeh')||1.5)*u;
+    const fwd=back.clone().negate().multiplyScalar(Math.cos(pt)); fwd.y=-Math.sin(pt);
+    cam.near=u*0.01; cam.far=u*100; cam.updateProjectionMatrix(); cam.lookAt(cam.position.clone().add(fwd)); r.render(s,cam); document.title='ready'; return; }
   cam.near=fit*0.001; cam.far=fit*20; cam.updateProjectionMatrix(); cam.lookAt(tgt);
   r.render(s,cam); document.title='ready';
 });
