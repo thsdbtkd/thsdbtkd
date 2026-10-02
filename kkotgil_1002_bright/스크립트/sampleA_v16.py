@@ -5,6 +5,7 @@ import sys,numpy as np
 from scipy.cluster.vq import kmeans2
 from fbio import G
 from sampleA_v15 import add_prim
+CREAM_ON=False
 def addv(g,arr,target=34962):
     j=g.j
     while len(g.bin)%4: g.bin.append(0)
@@ -31,7 +32,7 @@ def run(src,dst,SCALE=1.3,NEXTRA=14,seed=8):
     # 1b) 작약처럼: 송이 가운데는 크림, 바깥 꽃잎은 원래 분홍 — 밝기는 그대로, 위를 향한 면은 따뜻한 빛 +
     def s2l(c): c=np.asarray(c,float)/255; return np.where(c<=0.04045,c/12.92,((c+0.055)/1.055)**2.4)
     cream=s2l((255,238,222)); lw=np.array([0.2126,0.7152,0.0722])
-    for n in D:
+    for n in (D if CREAM_ON else []):
         p=D[n]['pos']; c=cen[D[n]['lab']]; r=np.linalg.norm((p-c)[:,[0,2]],axis=1)
         rr=np.zeros(len(p))
         for b in np.unique(D[n]['lab']):
